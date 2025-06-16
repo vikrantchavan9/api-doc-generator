@@ -6,6 +6,60 @@ import { flattenJSON } from '@/utils/flatten';
 export default function Home() {
   const [input, setInput] = useState('');
   const [result, setResult] = useState<any[]>([]);
+  const [airesult, setAiresult] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  console.log("Start Result :", result, "AI Result :", airesult, "End");
+
+  const handleaiSubmit = async () => {
+    setLoading(true)
+    try {
+      const fields = result.map(({ path, type }) => ({ path, type }));
+
+      const res = await fetch('/api/generate-descriptions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields }),
+      });
+
+      const data = await res.json();
+      // console.log("AI raw response:", data);
+      setAiresult(data);
+
+      const cleanPath = (path: string) =>
+        path.replace(/`/g, '').replace(/^\d+\./, '').trim();
+
+
+      const updated = result.map((item) => {
+        const found = data.find((f: any) => {
+          const cleanedAI = cleanPath(f.path);
+          const cleanedItem = cleanPath(item.path);
+          return cleanedAI === cleanedItem;
+        });
+
+        if (!found) {
+          console.warn("No match for:", item.path);
+        }
+
+        return {
+          ...item,
+          description: found?.description || item.description,
+        };
+      });
+
+      console.log("Updated Result : ", updated);
+      setResult(updated);
+    }
+    catch (err) {
+      console.log(err)
+    }
+    finally {
+      setLoading(false)
+    }
+
+  };
+
+
 
   const handleSubmit = async () => {
     try {
@@ -16,11 +70,12 @@ export default function Home() {
       });
       const data = await res.json();
       setResult(data);
+      console.log("parse data: ", data);
     } catch (err) {
       alert('Invalid JSON');
     }
   };
-
+  // console.log(result);
   return (
     <main className="p-4 max-w-2xl mx-auto">
       <textarea
@@ -54,6 +109,13 @@ export default function Home() {
           }}
           className="mb-4 bg-gray-100 text-black p-2"
         />
+
+        <button
+          disabled={loading}
+          onClick={handleaiSubmit}
+        >
+          Auto-Fill Descriptions with AI
+        </button>
 
         <button
           onClick={handleSubmit}
@@ -100,7 +162,7 @@ export default function Home() {
           <h2 className="text-xl font-bold mb-2">Parsed Output</h2>
           <div className="overflow-x-auto border rounded">
             <table className="w-full text-left">
-              <thead className="bg-gray-200">
+              <thead className="">
                 <tr>
                   <th className="p-2 border-b">Path</th>
                   <th className="p-2 border-b">Type</th>
@@ -109,14 +171,16 @@ export default function Home() {
               </thead>
               <tbody>
                 {result.map((item, idx) => (
-                  <tr key={idx} className="even:bg-gray-50">
+                  <tr key={idx} className="">
                     <td className="p-2 border-b font-mono">{item.path}</td>
                     <td className="p-2 border-b text-sm">{item.type}</td>
                     <td className="p-2 border-b text-sm">
                       <input
                         type="text"
                         className="w-full p-1 border rounded text-xs"
-                        value={item.description}
+                        value={
+                          item.description
+                        }
                         onChange={(e) => {
                           const newResult = [...result];
                           newResult[idx].description = e.target.value;
