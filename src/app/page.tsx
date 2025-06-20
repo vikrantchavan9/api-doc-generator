@@ -5,14 +5,17 @@ import { flattenJSON } from '@/utils/flatten';
 
 export default function Home() {
   const [input, setInput] = useState('');
+  const [status, setStatus] = useState('');
   const [result, setResult] = useState<any[]>([]);
   const [airesult, setAiresult] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  console.log("Start Result :", result, "AI Result :", airesult, "End");
+  // console.log("Start Result :", result, "AI Result :", airesult, "End");
 
   const handleaiSubmit = async () => {
-    setLoading(true)
+    setLoading(true);
+    setStatus('');
+
     try {
       const fields = result.map(({ path, type }) => ({ path, type }));
 
@@ -22,13 +25,17 @@ export default function Home() {
         body: JSON.stringify({ fields }),
       });
 
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("API Error:", res.status, errorText);
+        throw new Error(`API request failed with status ${res.status}`);
+      }
+
       const data = await res.json();
-      // console.log("AI raw response:", data);
       setAiresult(data);
 
       const cleanPath = (path: string) =>
         path.replace(/`/g, '').replace(/^\d+\./, '').trim();
-
 
       const updated = result.map((item) => {
         const found = data.find((f: any) => {
@@ -36,6 +43,7 @@ export default function Home() {
           const cleanedItem = cleanPath(item.path);
           return cleanedAI === cleanedItem;
         });
+        setStatus('success');
 
         if (!found) {
           console.warn("No match for:", item.path);
@@ -47,16 +55,13 @@ export default function Home() {
         };
       });
 
-      console.log("Updated Result : ", updated);
       setResult(updated);
+    } catch (err) {
+      console.error("Fetch failed:", err);
+      setStatus('error');
+    } finally {
+      setLoading(false);
     }
-    catch (err) {
-      console.log(err)
-    }
-    finally {
-      setLoading(false)
-    }
-
   };
 
 
@@ -111,18 +116,19 @@ export default function Home() {
         />
 
         <button
+          className="mt-4 ml-2 px-4 py-2 bg-blue-600 text-white rounded"
           disabled={loading}
           onClick={handleaiSubmit}
         >
           Auto-Fill Descriptions with AI
         </button>
 
-        <button
+        {/* <button
           onClick={handleSubmit}
           className="mt-4 ml-2 px-4 py-2 bg-blue-600 text-white rounded"
         >
           Parse
-        </button>
+        </button> */}
 
         <button
           onClick={() => {
@@ -154,6 +160,18 @@ export default function Home() {
         >
           Download Markdown
         </button>
+
+        {loading && (
+          <p className="mt-2 text-blue-600 text-sm animate-pulse">Generating descriptions...</p>
+        )}
+
+        {status === 'success' && (
+          <p className="mt-2 text-green-600 text-sm">Descriptions updated successfully ✅</p>
+        )}
+
+        {status === 'error' && (
+          <p className="mt-2 text-red-600 text-sm">Something went wrong ❌</p>
+        )}
       </div>
 
 
