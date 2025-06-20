@@ -10,8 +10,6 @@ export default function Home() {
   const [airesult, setAiresult] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // console.log("Start Result :", result, "AI Result :", airesult, "End");
-
   const handleaiSubmit = async () => {
     setLoading(true);
     setStatus('');
@@ -43,19 +41,18 @@ export default function Home() {
           const cleanedItem = cleanPath(item.path);
           return cleanedAI === cleanedItem;
         });
-        setStatus('success');
 
-        if (!found) {
-          console.warn("No match for:", item.path);
-        }
+        const isAIUpdated = !item.description && found?.description;
 
         return {
           ...item,
           description: found?.description || item.description,
+          fromAI: isAIUpdated,
         };
       });
 
       setResult(updated);
+      setStatus('success');
     } catch (err) {
       console.error("Fetch failed:", err);
       setStatus('error');
@@ -64,9 +61,7 @@ export default function Home() {
     }
   };
 
-
-
-  const handleSubmit = async () => {
+  const handleParseSubmit = async () => {
     try {
       const res = await fetch('/api/parse', {
         method: 'POST',
@@ -80,7 +75,7 @@ export default function Home() {
       alert('Invalid JSON');
     }
   };
-  // console.log(result);
+
   return (
     <main className="p-4 max-w-2xl mx-auto">
       <textarea
@@ -91,7 +86,17 @@ export default function Home() {
         placeholder='Paste JSON here...'
       />
 
-      <div className='flex flex-col items-start justify-center'>
+      <button
+        onClick={handleParseSubmit}
+        className="mt-4 ml-2 px-4 py-2 bg-blue-600 text-white rounded"
+      >
+        Parse
+      </button>
+
+
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-2">
+
         <input
           type="file"
           accept=".json"
@@ -104,31 +109,25 @@ export default function Home() {
               try {
                 const text = event.target?.result as string;
                 const parsed = JSON.parse(text);
-                setInput(JSON.stringify(parsed, null, 2)); // update textarea
-                setResult(flattenJSON(parsed)); // auto-parse
+                setInput(JSON.stringify(parsed, null, 2));
+                setResult(flattenJSON(parsed));
               } catch (err) {
                 alert("Invalid JSON file");
               }
             };
             reader.readAsText(file);
           }}
-          className="mb-4 bg-gray-100 text-black p-2"
+          className="my-4 bg-gray-100 text-black p-2"
         />
-
+      </div>
+      <div className='flex  gap-2 max-w-auto'>
         <button
-          className="mt-4 ml-2 px-4 py-2 bg-blue-600 text-white rounded"
           disabled={loading}
           onClick={handleaiSubmit}
+          className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
         >
-          Auto-Fill Descriptions with AI
+          Auto-Fill Descriptions
         </button>
-
-        {/* <button
-          onClick={handleSubmit}
-          className="mt-4 ml-2 px-4 py-2 bg-blue-600 text-white rounded"
-        >
-          Parse
-        </button> */}
 
         <button
           onClick={() => {
@@ -140,7 +139,7 @@ export default function Home() {
             link.click();
             URL.revokeObjectURL(url);
           }}
-          className="mt-4 ml-2 px-4 py-2 bg-blue-600 text-white rounded"
+          className="px-4 py-2 bg-gray-800 text-white rounded"
         >
           Download JSON
         </button>
@@ -156,31 +155,46 @@ export default function Home() {
             link.click();
             URL.revokeObjectURL(url);
           }}
-          className="mt-4 ml-2 px-4 py-2 bg-blue-600 text-white rounded"
+          className="px-4 py-2 bg-gray-800 text-white rounded"
         >
           Download Markdown
         </button>
-
-        {loading && (
-          <p className="mt-2 text-blue-600 text-sm animate-pulse">Generating descriptions...</p>
-        )}
-
-        {status === 'success' && (
-          <p className="mt-2 text-green-600 text-sm">Descriptions updated successfully ✅</p>
-        )}
-
-        {status === 'error' && (
-          <p className="mt-2 text-red-600 text-sm">Something went wrong ❌</p>
-        )}
       </div>
 
 
+
+      {/* Feedback Messages */}
+      {loading && (
+        <div className="mt-2 flex items-center space-x-2 text-blue-600 text-sm">
+          <svg className="animate-spin h-4 w-4 text-blue-600" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+          </svg>
+          <span>Generating descriptions...</span>
+        </div>
+      )}
+
+      {status === 'success' && (
+        <p className="mt-2 text-green-600 text-sm">Descriptions updated successfully ✅</p>
+      )}
+
+      {status === 'error' && (
+        <p className="mt-2 text-red-600 text-sm">Something went wrong ❌</p>
+      )}
+
+      {result.length > 0 && (
+        <p className="mt-1 text-sm text-gray-700">
+          Descriptions filled: {result.filter(r => r.description?.trim()).length} / {result.length}
+        </p>
+      )}
+
+      {/* Results Table */}
       {result.length > 0 && (
         <div className="mt-4">
           <h2 className="text-xl font-bold mb-2">Parsed Output</h2>
           <div className="overflow-x-auto border rounded">
-            <table className="w-full text-left">
-              <thead className="">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-gray-black text-white">
                 <tr>
                   <th className="p-2 border-b">Path</th>
                   <th className="p-2 border-b">Type</th>
@@ -189,16 +203,14 @@ export default function Home() {
               </thead>
               <tbody>
                 {result.map((item, idx) => (
-                  <tr key={idx} className="">
+                  <tr key={idx} className={`hover:bg-gray-800 ${item.fromAI ? 'bg-gray-900' : ''}`}>
                     <td className="p-2 border-b font-mono">{item.path}</td>
-                    <td className="p-2 border-b text-sm">{item.type}</td>
-                    <td className="p-2 border-b text-sm">
+                    <td className="p-2 border-b">{item.type}</td>
+                    <td className="p-2 border-b">
                       <input
                         type="text"
                         className="w-full p-1 border rounded text-xs"
-                        value={
-                          item.description
-                        }
+                        value={item.description}
                         onChange={(e) => {
                           const newResult = [...result];
                           newResult[idx].description = e.target.value;
