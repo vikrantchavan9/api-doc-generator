@@ -14,23 +14,34 @@ export default function Home() {
     setLoading(true);
     setStatus('');
 
-    try {
-      const fields = result.map(({ path, type }) => ({ path, type }));
+    const fields = result.map(({ path, type }) => ({ path, type })).filter(f => f.path && f.type);
 
-      const res = await fetch('/api/generate-descriptions', {
+    if (fields.length === 0) {
+      console.warn("No valid fields to send");
+      setStatus('error');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const res = await fetch('https://6dnr1ysdr2.execute-api.ap-south-1.amazonaws.com/prod/generate-api-descriptions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fields }),
       });
 
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error("API Error:", res.status, errorText);
-        throw new Error(`API request failed with status ${res.status}`);
-      }
+      const raw = await res.json();
+      console.log("Raw Lambda response:", raw);
 
-      const data = await res.json();
-      setAiresult(data);
+      const responseText = raw.text || raw.completion || JSON.stringify(raw);
+      const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/);
+      const cleaned = jsonMatch ? jsonMatch[1] : responseText;
+      const data = JSON.parse(cleaned);
+
+      if (!Array.isArray(data)) {
+        console.error("Expected array from AI, got:", data);
+        throw new Error("Invalid AI response");
+      }
 
       const cleanPath = (path: string) =>
         path.replace(/`/g, '').replace(/^\d+\./, '').trim();
@@ -42,16 +53,15 @@ export default function Home() {
           return cleanedAI === cleanedItem;
         });
 
-        const isAIUpdated = !item.description && found?.description;
-
         return {
           ...item,
           description: found?.description || item.description,
-          fromAI: isAIUpdated,
+          fromAI: !item.description && !!found?.description,
         };
       });
 
       setResult(updated);
+      setAiresult(data);
       setStatus('success');
     } catch (err) {
       console.error("Fetch failed:", err);
