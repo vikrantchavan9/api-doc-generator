@@ -3,20 +3,23 @@ import { useState } from 'react';
 import { generateMarkdown } from '@/utils/generateMarkdown';
 import { flattenJSON } from '@/utils/flatten';
 
-import { Field, AIResponseField, ResultItem } from '@/types/api';
+// Import your types from the new file
+import { Field, AIResponseField, ResultItem, MarkdownItem } from '@/types/api';
 
 export default function Home() {
-  const [input, setInput] = useState('');
-  const [status, setStatus] = useState('');
-  const [result, setResult] = useState<any[]>([]);
-  const [airesult, setAiresult] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [input, setInput] = useState<string>('');
+  const [status, setStatus] = useState<string>('');
+  const [result, setResult] = useState<ResultItem[]>([]); // Correctly typed as ResultItem[]
+  const [loading, setLoading] = useState<boolean>(false);
 
   const handleaiSubmit = async () => {
     setLoading(true);
     setStatus('');
 
-    const fields: Field[] = result.map(({ path, type }) => ({ path, type })).filter(f => f.path && f.type);
+    const fields: Field[] = result
+      .map((item) => ({ path: item.path, type: item.type }))
+      .filter((f: Field) => f.path && f.type); // 'f' is correctly typed as Field
+
     console.log("FIELDS SENDING TO LAMBDA:", fields);
 
     if (fields.length === 0) {
@@ -36,20 +39,27 @@ export default function Home() {
       const raw = await res.json();
       console.log("Raw Lambda response:", raw);
 
+      // Handle cases where Lambda might return an error structure directly
+      if (res.status !== 200) {
+        throw new Error(raw.error || 'Lambda error');
+      }
+
       const responseText = raw.text || raw.completion || JSON.stringify(raw);
+      // Ensure the regex is robust enough for your AI response format
       const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/);
       const cleaned = jsonMatch ? jsonMatch[1] : responseText;
-      const data: AIResponseField[] = JSON.parse(cleaned);
+      const data: AIResponseField[] = JSON.parse(cleaned); // Explicitly typed as AIResponseField[]
 
       if (!Array.isArray(data)) {
         console.error("Expected array from AI, got:", data);
-        throw new Error("Invalid AI response");
+        throw new Error("Invalid AI response: Expected an array.");
       }
+
       const cleanPath = (path: string) =>
         path.replace(/`/g, '').replace(/^\d+\./, '').trim();
 
       const updated: ResultItem[] = result.map((item) => {
-        const found = data.find((f: any) => {
+        const found = data.find((f: AIResponseField) => { // 'f' is correctly typed as AIResponseField
           const cleanedAI = cleanPath(f.path);
           const cleanedItem = cleanPath(item.path);
           return cleanedAI === cleanedItem;
@@ -63,11 +73,12 @@ export default function Home() {
       });
 
       setResult(updated);
-      setAiresult(data);
+      // If you uncommented `airesult` state, you'd set it here:
+      // setAiresult(data);
       setStatus('success');
       console.log("AI Response:", data);
-    } catch (err) {
-      console.error("Fetch failed:", err);
+    } catch (err: unknown) { // 'err' is now typed as unknown (recommended for catch blocks)
+      console.error("Fetch failed:", err); // 'err' is now used by logging it
       setStatus('error');
     } finally {
       setLoading(false);
@@ -76,15 +87,16 @@ export default function Home() {
 
   const handleParseSubmit = async () => {
     try {
-      const res = await fetch('/api/parse', {
+      const res = await fetch('/api/parse', { // This is an internal Next.js API route
         method: 'POST',
         body: input,
         headers: { 'Content-Type': 'application/json' }
       });
-      const data = await res.json();
+      const data: ResultItem[] = await res.json(); // Explicitly typed as ResultItem[]
       setResult(data);
       console.log("parse data: ", data);
-    } catch (err) {
+    } catch (err: unknown) { // 'err' is now typed as unknown
+      console.error("Parse failed:", err); // 'err' is now used by logging it
       alert('Invalid JSON');
     }
   };
@@ -106,10 +118,7 @@ export default function Home() {
         Parse
       </button>
 
-
-
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-2">
-
         <input
           type="file"
           accept=".json"
@@ -123,8 +132,10 @@ export default function Home() {
                 const text = event.target?.result as string;
                 const parsed = JSON.parse(text);
                 setInput(JSON.stringify(parsed, null, 2));
+                // Assuming flattenJSON returns ResultItem[]
                 setResult(flattenJSON(parsed));
-              } catch (err) {
+              } catch (err: unknown) { // 'err' is now typed as unknown
+                console.error("File parse failed:", err); // 'err' is now used by logging it
                 alert("Invalid JSON file");
               }
             };
@@ -133,7 +144,7 @@ export default function Home() {
           className="my-4 bg-gray-100 text-black p-2"
         />
       </div>
-      <div className='flex  gap-2 max-w-auto'>
+      <div className='flex gap-2 max-w-auto'>
         <button
           disabled={loading}
           onClick={handleaiSubmit}
@@ -159,7 +170,11 @@ export default function Home() {
 
         <button
           onClick={() => {
-            const markdown = generateMarkdown(result);
+            const itemsForMarkdown: MarkdownItem[] = result.filter( // <--- Declaration here
+              (item): item is MarkdownItem =>
+                item.description != null && item.description.trim() !== ''
+            );
+            const markdown = generateMarkdown(itemsForMarkdown);
             const blob = new Blob([markdown], { type: 'text/markdown' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
@@ -173,8 +188,6 @@ export default function Home() {
           Download Markdown
         </button>
       </div>
-
-
 
       {/* Feedback Messages */}
       {loading && (
@@ -223,7 +236,7 @@ export default function Home() {
                       <input
                         type="text"
                         className="w-full p-1 border rounded text-xs"
-                        value={item.description}
+                        value={item.description || ''}
                         onChange={(e) => {
                           const newResult = [...result];
                           newResult[idx].description = e.target.value;
