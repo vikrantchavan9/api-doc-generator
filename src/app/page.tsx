@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { generateMarkdown } from '@/utils/generateMarkdown';
 import { flattenJSON } from '@/utils/flatten';
 
+import { Field, AIResponseField, ResultItem } from '@/types/api';
+
 export default function Home() {
   const [input, setInput] = useState('');
   const [status, setStatus] = useState('');
@@ -14,7 +16,7 @@ export default function Home() {
     setLoading(true);
     setStatus('');
 
-    const fields = result.map(({ path, type }) => ({ path, type })).filter(f => f.path && f.type);
+    const fields: Field[] = result.map(({ path, type }) => ({ path, type })).filter(f => f.path && f.type);
     console.log("FIELDS SENDING TO LAMBDA:", fields);
 
     if (fields.length === 0) {
@@ -37,7 +39,7 @@ export default function Home() {
       const responseText = raw.text || raw.completion || JSON.stringify(raw);
       const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/);
       const cleaned = jsonMatch ? jsonMatch[1] : responseText;
-      const data = JSON.parse(cleaned);
+      const data: AIResponseField[] = JSON.parse(cleaned);
 
       if (!Array.isArray(data)) {
         console.error("Expected array from AI, got:", data);
@@ -46,7 +48,7 @@ export default function Home() {
       const cleanPath = (path: string) =>
         path.replace(/`/g, '').replace(/^\d+\./, '').trim();
 
-      const updated = result.map((item) => {
+      const updated: ResultItem[] = result.map((item) => {
         const found = data.find((f: any) => {
           const cleanedAI = cleanPath(f.path);
           const cleanedItem = cleanPath(item.path);

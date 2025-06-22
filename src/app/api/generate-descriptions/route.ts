@@ -1,3 +1,4 @@
+import { error } from 'console';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
@@ -43,7 +44,7 @@ ${JSON.stringify(fields, null, 2)}
           const parsed = JSON.parse(output);
           return NextResponse.json(parsed);
      } catch (err) {
-          console.error('Failed to parse Gemini response as JSON:', err);
+          console.error('Failed to parse Gemini response as JSON:', error);
           return NextResponse.json({ error: 'Invalid response from AI', raw: output }, { status: 500 });
      }
 }
