@@ -15,6 +15,7 @@ export default function Home() {
     setStatus('');
 
     const fields = result.map(({ path, type }) => ({ path, type })).filter(f => f.path && f.type);
+    console.log("FIELDS SENDING TO LAMBDA:", fields);
 
     if (fields.length === 0) {
       console.warn("No valid fields to send");
@@ -24,7 +25,7 @@ export default function Home() {
     }
 
     try {
-      const res = await fetch('https://6dnr1ysdr2.execute-api.ap-south-1.amazonaws.com/prod/generate-api-descriptions', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fields }),
@@ -42,7 +43,6 @@ export default function Home() {
         console.error("Expected array from AI, got:", data);
         throw new Error("Invalid AI response");
       }
-
       const cleanPath = (path: string) =>
         path.replace(/`/g, '').replace(/^\d+\./, '').trim();
 
@@ -63,6 +63,7 @@ export default function Home() {
       setResult(updated);
       setAiresult(data);
       setStatus('success');
+      console.log("AI Response:", data);
     } catch (err) {
       console.error("Fetch failed:", err);
       setStatus('error');
