@@ -1,256 +1,238 @@
-'use client';
-import { useState } from 'react';
-import { generateMarkdown } from '@/utils/generateMarkdown';
-import { flattenJSON } from '@/utils/flatten';
+"use client"
 
-// Import your types from the new file
-import { Field, AIResponseField, ResultItem, MarkdownItem } from '@/types/api';
+import { useState } from "react"
+import { LandingSection } from "@/components/landing-section"
+import { EditorSection } from "@/components/editor-section"
+import { PreviewSection } from "@/components/preview-section"
+import { ThemeProvider } from "@/components/theme-provider"
+import { Toaster } from "@/components/ui/toaster"
+import { useToast } from "@/hooks/use-toast"
+
+// Import your existing types
+import type { Field, AIResponseField, ResultItem } from "@/types/api"
+
+type ViewMode = "landing" | "editor" | "preview"
 
 export default function Home() {
-  const [input, setInput] = useState<string>('');
-  const [status, setStatus] = useState<string>('');
-  const [result, setResult] = useState<ResultItem[]>([]); // Correctly typed as ResultItem[]
-  const [loading, setLoading] = useState<boolean>(false);
+  const [currentView, setCurrentView] = useState<ViewMode>("landing")
+  const [input, setInput] = useState<string>("")
+  const [result, setResult] = useState<ResultItem[]>([])
+  const [loading, setLoading] = useState<boolean>(false)
+  const [aiLoading, setAiLoading] = useState<boolean>(false)
+  const { toast } = useToast()
 
-  const handleaiSubmit = async () => {
-    setLoading(true);
-    setStatus('');
-
-    const fields: Field[] = result
-      .map((item) => ({ path: item.path, type: item.type }))
-      .filter((f: Field) => f.path && f.type); // 'f' is correctly typed as Field
-
-    console.log("FIELDS SENDING TO LAMBDA:", fields);
-
-    if (fields.length === 0) {
-      console.warn("No valid fields to send");
-      setStatus('error');
-      setLoading(false);
-      return;
+  const handleParseSubmit = async () => {
+    if (!input.trim()) {
+      toast({
+        title: "Error",
+        description: "Please provide JSON input",
+        variant: "destructive",
+      })
+      return
     }
 
+    setLoading(true)
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fields }),
-      });
+      const res = await fetch("/api/parse", {
+        method: "POST",
+        body: input,
+        headers: { "Content-Type": "application/json" },
+      })
 
-      const raw = await res.json();
-      console.log("Raw Lambda response:", raw);
-
-      // Handle cases where Lambda might return an error structure directly
-      if (res.status !== 200) {
-        throw new Error(raw.error || 'Lambda error');
+      if (!res.ok) {
+        throw new Error("Failed to parse JSON")
       }
 
-      const responseText = raw.text || raw.completion || JSON.stringify(raw);
-      // Ensure the regex is robust enough for your AI response format
-      const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/);
-      const cleaned = jsonMatch ? jsonMatch[1] : responseText;
-      const data: AIResponseField[] = JSON.parse(cleaned); // Explicitly typed as AIResponseField[]
+      const data: ResultItem[] = await res.json()
+      setResult(data)
+      setCurrentView("preview")
+
+      toast({
+        title: "Success",
+        description: `JSON parsed successfully! Found ${data.length} fields.`,
+      })
+    } catch (err) {
+      console.error("Parse failed:", err)
+      toast({
+        title: "Parse Error",
+        description: "Invalid JSON format. Please check your input.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleAiSubmit = async () => {
+    const fields: Field[] = result
+      .map((item) => ({ path: item.path, type: item.type }))
+      .filter((f: Field) => f.path && f.type)
+
+    if (fields.length === 0) {
+      toast({
+        title: "Error",
+        description: "No valid fields to process",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setAiLoading(true)
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fields }),
+      })
+
+      if (!res.ok) {
+        throw new Error("AI service error")
+      }
+
+      const raw = await res.json()
+      const responseText = raw.text || raw.completion || JSON.stringify(raw)
+      const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/)
+      const cleaned = jsonMatch ? jsonMatch[1] : responseText
+      const data: AIResponseField[] = JSON.parse(cleaned)
 
       if (!Array.isArray(data)) {
-        console.error("Expected array from AI, got:", data);
-        throw new Error("Invalid AI response: Expected an array.");
+        throw new Error("Invalid AI response format")
       }
 
       const cleanPath = (path: string) =>
-        path.replace(/`/g, '').replace(/^\d+\./, '').trim();
+        path
+          .replace(/`/g, "")
+          .replace(/^\d+\./, "")
+          .trim()
 
       const updated: ResultItem[] = result.map((item) => {
-        const found = data.find((f: AIResponseField) => { // 'f' is correctly typed as AIResponseField
-          const cleanedAI = cleanPath(f.path);
-          const cleanedItem = cleanPath(item.path);
-          return cleanedAI === cleanedItem;
-        });
+        const found = data.find((f: AIResponseField) => {
+          const cleanedAI = cleanPath(f.path)
+          const cleanedItem = cleanPath(item.path)
+          return cleanedAI === cleanedItem
+        })
 
         return {
           ...item,
           description: found?.description || item.description,
           fromAI: !item.description && !!found?.description,
-        };
-      });
+        }
+      })
 
-      setResult(updated);
-      // If you uncommented `airesult` state, you'd set it here:
-      // setAiresult(data);
-      setStatus('success');
-      console.log("AI Response:", data);
-    } catch (err: unknown) { // 'err' is now typed as unknown (recommended for catch blocks)
-      console.error("Fetch failed:", err); // 'err' is now used by logging it
-      setStatus('error');
+      setResult(updated)
+      const filledCount = updated.filter((r) => r.description?.trim()).length
+
+      toast({
+        title: "AI Descriptions Generated",
+        description: `Successfully generated descriptions for ${filledCount} fields.`,
+      })
+    } catch (err) {
+      console.error("AI generation failed:", err)
+      toast({
+        title: "AI Error",
+        description: "Failed to generate descriptions. Please try again.",
+        variant: "destructive",
+      })
     } finally {
-      setLoading(false);
+      setAiLoading(false)
     }
-  };
+  }
 
-  const handleParseSubmit = async () => {
-    try {
-      const res = await fetch('/api/parse', { // This is an internal Next.js API route
-        method: 'POST',
-        body: input,
-        headers: { 'Content-Type': 'application/json' }
-      });
-      const data: ResultItem[] = await res.json(); // Explicitly typed as ResultItem[]
-      setResult(data);
-      console.log("parse data: ", data);
-    } catch (err: unknown) { // 'err' is now typed as unknown
-      console.error("Parse failed:", err); // 'err' is now used by logging it
-      alert('Invalid JSON');
+  const handleFileUpload = (file: File) => {
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string
+        const parsed = JSON.parse(text)
+        setInput(JSON.stringify(parsed, null, 2))
+        setCurrentView("editor")
+
+        toast({
+          title: "File Loaded",
+          description: "JSON file loaded successfully",
+        })
+      } catch (err) {
+        console.error("File parse failed:", err)
+        toast({
+          title: "File Error",
+          description: "Invalid JSON file format",
+          variant: "destructive",
+        })
+      }
     }
-  };
+    reader.readAsText(file)
+  }
+
+  const loadSampleData = () => {
+    const sampleJson = {
+      user: {
+        id: 1,
+        name: "John Doe",
+        email: "john@example.com",
+        profile: {
+          age: 30,
+          location: "New York",
+          preferences: {
+            theme: "dark",
+            notifications: true,
+          },
+        },
+      },
+      posts: [
+        {
+          id: 1,
+          title: "Sample Post",
+          content: "This is a sample post content",
+          published: true,
+          tags: ["sample", "demo"],
+        },
+      ],
+    }
+
+    setInput(JSON.stringify(sampleJson, null, 2))
+    setCurrentView("editor")
+
+    toast({
+      title: "Sample Loaded",
+      description: "Sample JSON data loaded for testing",
+    })
+  }
 
   return (
-    <main className="p-4 max-w-2xl mx-auto">
-      <textarea
-        rows={10}
-        className="w-full p-2 border rounded"
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        placeholder='Paste JSON here...'
-      />
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <div className="min-h-screen bg-background">
+        {currentView === "landing" && (
+          <LandingSection
+            onUploadClick={() => setCurrentView("editor")}
+            onPasteClick={() => setCurrentView("editor")}
+            onSampleClick={loadSampleData}
+          />
+        )}
 
-      <button
-        onClick={handleParseSubmit}
-        className="mt-4 ml-2 px-4 py-2 bg-blue-600 text-white rounded"
-      >
-        Parse
-      </button>
+        {currentView === "editor" && (
+          <EditorSection
+            input={input}
+            setInput={setInput}
+            onParse={handleParseSubmit}
+            onFileUpload={handleFileUpload}
+            loading={loading}
+            onBack={() => setCurrentView("landing")}
+          />
+        )}
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-2">
-        <input
-          type="file"
-          accept=".json"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
+        {currentView === "preview" && (
+          <PreviewSection
+            result={result}
+            setResult={setResult}
+            onAiGenerate={handleAiSubmit}
+            aiLoading={aiLoading}
+            onBack={() => setCurrentView("editor")}
+            onEdit={() => setCurrentView("editor")}
+          />
+        )}
 
-            const reader = new FileReader();
-            reader.onload = (event) => {
-              try {
-                const text = event.target?.result as string;
-                const parsed = JSON.parse(text);
-                setInput(JSON.stringify(parsed, null, 2));
-                // Assuming flattenJSON returns ResultItem[]
-                setResult(flattenJSON(parsed));
-              } catch (err: unknown) { // 'err' is now typed as unknown
-                console.error("File parse failed:", err); // 'err' is now used by logging it
-                alert("Invalid JSON file");
-              }
-            };
-            reader.readAsText(file);
-          }}
-          className="my-4 bg-gray-100 text-black p-2"
-        />
+        <Toaster />
       </div>
-      <div className='flex gap-2 max-w-auto'>
-        <button
-          disabled={loading}
-          onClick={handleaiSubmit}
-          className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
-        >
-          Auto-Fill Descriptions
-        </button>
-
-        <button
-          onClick={() => {
-            const blob = new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = 'parsed_output.json';
-            link.click();
-            URL.revokeObjectURL(url);
-          }}
-          className="px-4 py-2 bg-gray-800 text-white rounded"
-        >
-          Download JSON
-        </button>
-
-        <button
-          onClick={() => {
-            const itemsForMarkdown: MarkdownItem[] = result.filter( // <--- Declaration here
-              (item): item is MarkdownItem =>
-                item.description != null && item.description.trim() !== ''
-            );
-            const markdown = generateMarkdown(itemsForMarkdown);
-            const blob = new Blob([markdown], { type: 'text/markdown' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = 'parsed_output.md';
-            link.click();
-            URL.revokeObjectURL(url);
-          }}
-          className="px-4 py-2 bg-gray-800 text-white rounded"
-        >
-          Download Markdown
-        </button>
-      </div>
-
-      {/* Feedback Messages */}
-      {loading && (
-        <div className="mt-2 flex items-center space-x-2 text-blue-600 text-sm">
-          <svg className="animate-spin h-4 w-4 text-blue-600" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-          </svg>
-          <span>Generating descriptions...</span>
-        </div>
-      )}
-
-      {status === 'success' && (
-        <p className="mt-2 text-green-600 text-sm">Descriptions updated successfully ✅</p>
-      )}
-
-      {status === 'error' && (
-        <p className="mt-2 text-red-600 text-sm">Something went wrong ❌</p>
-      )}
-
-      {result.length > 0 && (
-        <p className="mt-1 text-sm text-gray-700">
-          Descriptions filled: {result.filter(r => r.description?.trim()).length} / {result.length}
-        </p>
-      )}
-
-      {/* Results Table */}
-      {result.length > 0 && (
-        <div className="mt-4">
-          <h2 className="text-xl font-bold mb-2">Parsed Output</h2>
-          <div className="overflow-x-auto border rounded">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-gray-black text-white">
-                <tr>
-                  <th className="p-2 border-b">Path</th>
-                  <th className="p-2 border-b">Type</th>
-                  <th className="p-2 border-b">Description</th>
-                </tr>
-              </thead>
-              <tbody>
-                {result.map((item, idx) => (
-                  <tr key={idx} className={`hover:bg-gray-800 ${item.fromAI ? 'bg-gray-900' : ''}`}>
-                    <td className="p-2 border-b font-mono">{item.path}</td>
-                    <td className="p-2 border-b">{item.type}</td>
-                    <td className="p-2 border-b">
-                      <input
-                        type="text"
-                        className="w-full p-1 border rounded text-xs"
-                        value={item.description || ''}
-                        onChange={(e) => {
-                          const newResult = [...result];
-                          newResult[idx].description = e.target.value;
-                          setResult(newResult);
-                        }}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-    </main>
-  );
+    </ThemeProvider>
+  )
 }
