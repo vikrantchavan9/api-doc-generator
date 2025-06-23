@@ -136,8 +136,8 @@ export function EditorSection({ input, setInput, onParse, onFileUpload, loading,
                                         <CardContent>
                                              <div
                                                   className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${dragActive
-                                                            ? "border-primary bg-primary/5"
-                                                            : "border-muted-foreground/25 hover:border-muted-foreground/50"
+                                                       ? "border-primary bg-primary/5"
+                                                       : "border-muted-foreground/25 hover:border-muted-foreground/50"
                                                        }`}
                                                   onDragEnter={handleDrag}
                                                   onDragLeave={handleDrag}

@@ -56,7 +56,7 @@ export function PreviewSection({ result, setResult, onAiGenerate, aiLoading, onB
                     title: "Copied!",
                     description: "Path copied to clipboard",
                })
-          } catch (err) {
+          } catch {
                toast({
                     title: "Copy failed",
                     description: "Unable to copy to clipboard",
