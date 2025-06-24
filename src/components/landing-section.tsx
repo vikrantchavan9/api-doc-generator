@@ -108,7 +108,7 @@ export function LandingSection({ onUploadClick, onPasteClick, onSampleClick }: L
                {/* Footer */}
                <footer className="border-t py-6">
                     <div className="container flex items-center justify-center space-x-6 text-sm text-muted-foreground">
-                         <a href="#" className="flex items-center space-x-1 hover:text-foreground">
+                         <a href="https://www.github.com/vikrantchavan9" className="flex items-center space-x-1 hover:text-foreground">
                               <Github className="h-4 w-4" />
                               <span>GitHub</span>
                          </a>

@@ -1,14 +1,14 @@
 "use client"
 
 import type React from "react"
-
+import styled from 'styled-components';
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import { ArrowLeft, Edit3, FileText, Code, FileDown, Sparkles, Copy, Check } from "lucide-react"
+import { ArrowBigLeft, Edit3, Fullscreen, FileDown, Sparkles, Copy, Check } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useToast } from "@/hooks/use-toast"
 import { generateMarkdown } from "@/utils/generateMarkdown"
@@ -119,11 +119,11 @@ export function PreviewSection({ result, setResult, onAiGenerate, aiLoading, onB
                     <div className="container flex h-16 items-center justify-between">
                          <div className="flex items-center space-x-4">
                               <Button variant="ghost" size="sm" onClick={onBack}>
-                                   <ArrowLeft className="h-4 w-4 mr-2" />
-                                   Back to Editor
+                                   <ArrowBigLeft className="h-6 w-6 mr-2" />
+
                               </Button>
                               <div className="flex items-center space-x-2">
-                                   <FileText className="h-5 w-5" />
+                                   <Fullscreen className="h-5 w-5" />
                                    <span className="font-semibold">Documentation Preview</span>
                               </div>
                          </div>
@@ -146,7 +146,7 @@ export function PreviewSection({ result, setResult, onAiGenerate, aiLoading, onB
                               </div>
 
                               <div className="flex flex-wrap gap-2">
-                                   <Button onClick={onAiGenerate} disabled={aiLoading} variant="outline" className="min-w-[140px]">
+                                   {/* <Button onClick={onAiGenerate} disabled={aiLoading} variant="outline" className="min-w-[140px]">
                                         {aiLoading ? (
                                              <>
                                                   <div className="animate-spin h-4 w-4 mr-2 border-2 border-current border-t-transparent rounded-full" />
@@ -155,10 +155,28 @@ export function PreviewSection({ result, setResult, onAiGenerate, aiLoading, onB
                                         ) : (
                                              <>
                                                   <Sparkles className="h-4 w-4 mr-2" />
-                                                  AI Descriptions
+                                                  Generate AI Descriptions
                                              </>
                                         )}
-                                   </Button>
+                                   </Button> */}
+
+                                   <StyledWrapper>
+                                        <button className="btn" onClick={onAiGenerate} disabled={aiLoading}>
+                                             <svg height={24} width={24} fill="#FFFFFF" viewBox="0 0 24 24" data-name="Layer 1" id="Layer_1" className="sparkle">
+                                                  <path d="M10,21.236,6.755,14.745.264,11.5,6.755,8.255,10,1.764l3.245,6.491L19.736,11.5l-6.491,3.245ZM18,21l1.5,3L21,21l3-1.5L21,18l-1.5-3L18,18l-3,1.5ZM19.333,4.667,20.5,7l1.167-2.333L24,3.5,21.667,2.333,20.5,0,19.333,2.333,17,3.5Z" />
+                                             </svg>
+                                             {aiLoading ? (
+                                                  <>
+                                                       <div className="text animate-spin" />
+                                                       Generating...
+                                                  </>
+                                             ) : (
+                                                  <>
+                                                       Generate AI Descriptions
+                                                  </>
+                                             )}
+                                        </button>
+                                   </StyledWrapper>
 
                                    <Button variant="outline" onClick={onEdit}>
                                         <Edit3 className="h-4 w-4 mr-2" />
@@ -166,13 +184,13 @@ export function PreviewSection({ result, setResult, onAiGenerate, aiLoading, onB
                                    </Button>
 
                                    <Button variant="outline" onClick={downloadJson}>
-                                        <Code className="h-4 w-4 mr-2" />
-                                        Export JSON
+                                        <FileDown className="h-4 w-4 mr-2" />
+                                        Download JSON
                                    </Button>
 
                                    <Button variant="outline" onClick={downloadMarkdown}>
                                         <FileDown className="h-4 w-4 mr-2" />
-                                        Export Markdown
+                                        Download Markdown
                                    </Button>
                               </div>
                          </div>
@@ -181,7 +199,7 @@ export function PreviewSection({ result, setResult, onAiGenerate, aiLoading, onB
                          <Card>
                               <CardContent className="pt-6">
                                    <div className="flex items-center justify-between mb-2">
-                                        <span className="text-sm font-medium">Documentation Progress</span>
+                                        <span className="text-sm font-medium pt-4">Documentation Progress</span>
                                         <span className="text-sm text-muted-foreground">
                                              {Math.round((filledDescriptions / totalFields) * 100)}%
                                         </span>
@@ -213,7 +231,7 @@ export function PreviewSection({ result, setResult, onAiGenerate, aiLoading, onB
                                                        {items.map((item) => (
                                                             <Card
                                                                  key={item.originalIndex}
-                                                                 className={`transition-colors ${item.fromAI ? "border-primary/50 bg-primary/5" : ""}`}
+                                                                 className={`transition-colors ${item.fromAI ? "border-primary/50 bg-primary/2" : ""}`}
                                                             >
                                                                  <CardHeader className="pb-3">
                                                                       <div className="flex items-center justify-between">
@@ -225,9 +243,9 @@ export function PreviewSection({ result, setResult, onAiGenerate, aiLoading, onB
                                                                                      onClick={() => copyToClipboard(item.path, item.originalIndex)}
                                                                                 >
                                                                                      {copiedIndex === item.originalIndex ? (
-                                                                                          <Check className="h-3 w-3" />
+                                                                                          <Check className="h-[5px] w-[5px]" />
                                                                                      ) : (
-                                                                                          <Copy className="h-3 w-3" />
+                                                                                          <Copy className="h-[5px] w-[5px]" />
                                                                                      )}
                                                                                 </Button>
                                                                            </div>
@@ -268,3 +286,48 @@ export function PreviewSection({ result, setResult, onAiGenerate, aiLoading, onB
           </div>
      )
 }
+
+const StyledWrapper = styled.div`
+  .btn {
+    border: none;
+    width: 20em;
+    height: 3em;
+    border: 1px solid rgb(94, 94, 94);
+    border-radius: 3em;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    background: linear-gradient(0deg,#A47CF3,#683FEA);
+    cursor: pointer;
+    transition: all 450ms ease-in-out;
+  }
+
+  .sparkle {
+    fill: white;
+    transition: all 800ms ease;
+  }
+
+  .text {
+    font-weight: 600;
+    color: white;
+    font-size: medium;
+  }
+
+  .btn:hover {
+    background: linear-gradient(0deg,#A47CF3,#683FEA);
+    box-shadow: inset 0px 1px 0px 0px rgba(255, 255, 255, 0.4),
+    inset 0px -4px 0px 0px rgba(0, 0, 0, 0.2),
+    0px 0px 0px 4px rgba(255, 255, 255, 0.2),
+    0px 0px 180px 0px #9917FF;
+    transform: translateY(-2px);
+  }
+
+  .btn:hover .text {
+    color: white;
+  }
+
+  .btn:hover .sparkle {
+    fill: white;
+    transform: scale(1.2);
+  }`;
