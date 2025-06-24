@@ -198,18 +198,27 @@ export function PreviewSection({ result, setResult, onAiGenerate, aiLoading, onB
                          {/* Progress Bar */}
                          <Card>
                               <CardContent className="pt-6">
-                                   <div className="flex items-center justify-between mb-2">
-                                        <span className="text-sm font-medium pt-4">Documentation Progress</span>
-                                        <span className="text-sm text-muted-foreground">
-                                             {Math.round((filledDescriptions / totalFields) * 100)}%
-                                        </span>
-                                   </div>
-                                   <div className="w-full bg-secondary rounded-full h-2">
-                                        <div
-                                             className="bg-primary h-2 rounded-full transition-all duration-300"
-                                             style={{ width: `${(filledDescriptions / totalFields) * 100}%` }}
-                                        />
-                                   </div>
+                                   {!aiLoading && filledDescriptions === 0 ? (
+                                        <p className="text-sm text-muted-foreground pt-4">
+                                             You haven’t described any fields yet.{" "}
+                                             <span className="text-primary font-medium">Click Generate AI Descriptions to get started.</span>
+                                        </p>
+                                   ) : (
+                                        <>
+                                             <div className="flex items-center justify-between mb-2">
+                                                  <span className="text-sm font-medium pt-4">Documentation Progress</span>
+                                                  <span className="text-sm text-muted-foreground">
+                                                       {Math.round((filledDescriptions / totalFields) * 100)}%
+                                                  </span>
+                                             </div>
+                                             <div className="w-full bg-secondary rounded-full h-2">
+                                                  <div
+                                                       className="bg-primary h-2 rounded-full transition-all duration-300"
+                                                       style={{ width: `${(filledDescriptions / totalFields) * 100}%` }}
+                                                  />
+                                             </div>
+                                        </>
+                                   )}
                               </CardContent>
                          </Card>
 
