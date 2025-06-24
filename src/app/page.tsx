@@ -115,7 +115,6 @@ export default function Home() {
         return {
           ...item,
           description: found?.description || item.description,
-          fromAI: !item.description && !!found?.description,
         }
       })
 
