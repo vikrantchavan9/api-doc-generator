@@ -46,7 +46,7 @@ export function LandingSection({ onUploadClick, onPasteClick, onSampleClick }: L
                                         <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto">
                                              <Upload className="h-6 w-6 text-primary" />
                                         </div>
-                                        <h3 className="font-semibold text-lg">Upload JSON</h3>
+                                        <h2 className="font-semibold text-lg">Upload JSON</h2>
                                         <p className="text-sm text-muted-foreground">
                                              Upload your JSON schema file and let AI generate comprehensive documentation
                                         </p>
@@ -59,7 +59,7 @@ export function LandingSection({ onUploadClick, onPasteClick, onSampleClick }: L
                                         <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto">
                                              <FileText className="h-6 w-6 text-primary" />
                                         </div>
-                                        <h3 className="font-semibold text-lg">Paste JSON</h3>
+                                        <h2 className="font-semibold text-lg">Paste JSON</h2>
                                         <p className="text-sm text-muted-foreground">
                                              Paste your JSON directly into our advanced code editor with syntax highlighting
                                         </p>
@@ -72,7 +72,7 @@ export function LandingSection({ onUploadClick, onPasteClick, onSampleClick }: L
                                         <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto">
                                              <Sparkles className="h-6 w-6 text-primary" />
                                         </div>
-                                        <h3 className="font-semibold text-lg">Try Sample</h3>
+                                        <h2 className="font-semibold text-lg">Try Sample</h2>
                                         <p className="text-sm text-muted-foreground">
                                              Explore with our sample JSON to see the power of AI-generated documentation
                                         </p>
