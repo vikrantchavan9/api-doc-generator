@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Upload, FileText, Sparkles, Github, Shield, FileCheck } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
+import Image from "next/image";
+import logo from "@/assets/logo5.png"
 
 interface LandingSectionProps {
      onUploadClick: () => void
@@ -18,8 +20,10 @@ export function LandingSection({ onUploadClick, onPasteClick, onSampleClick }: L
                <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                     <div className="container flex h-16 items-center justify-between">
                          <div className="flex items-center space-x-2">
-                              <FileCheck className="h-6 w-6" />
-                              <span className="font-bold text-xl">API Docs Generator</span>
+
+                              <Image src={logo} className="rounded-full" alt="logo" width={35} height={35} />
+
+                              <span className="font-bold text-md">API DOC GENERATOR</span>
                          </div>
                          <ThemeToggle />
                     </div>
