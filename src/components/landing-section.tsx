@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Upload, FileText, Sparkles, Github, Shield, FileCheck } from "lucide-react"
+import { Upload, FileText, Sparkles, Github, Shield } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import Image from "next/image";
 import logo from "@/assets/logo5.png"
